@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Multi-tenant NSC (National Service Center) model
+model NSC {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  region      String   @default("APAC")
+  subdomain   String   @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       UserNSC[]
+  channels    Channel[]
+  roles       Role[]
+  invitations Invitation[]
+
+  @@map("nscs")
+}
+
+// User model supporting multiple NSC access
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  firstName     String
+  lastName      String
+  passwordHash  String?   // Null for Windows auth users
+  authProvider  String    @default("form") // 'form', 'windows', 'azure-ad'
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  nscMemberships UserNSC[]
+  sentMessages   Message[]
+  channelMembers ChannelMember[]
+  invitations    Invitation[]
+
+  @@map("users")
+}
+
+// Junction table for User-NSC many-to-many relationship
+model UserNSC {
+  id      String @id @default(uuid())
+  userId  String
+  nscId   String
+  roleId  String
+  status  String @default("ACTIVE") // ACTIVE, PENDING_APPROVAL, REJECTED
+  isActive Boolean @default(true)
+  joinedAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nsc  NSC  @relation(fields: [nscId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, nscId])
+  @@map("user_nscs")
+}
+
+// Role-based access control
+model Role {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  nscId       String
+  permissions Json     // Store permissions as JSON
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  nsc         NSC       @relation(fields: [nscId], references: [id], onDelete: Cascade)
+  userNSCs    UserNSC[]
+
+  @@unique([name, nscId])
+  @@map("roles")
+}
+
+// Channel model for all types of conversations
+model Channel {
+  id          String      @id @default(uuid())
+  name        String?     // Optional for DMs, required for group chats/public channels
+  description String?
+  nscId       String
+  type        ChannelType @default(PUBLIC)
+  isActive    Boolean     @default(true)
+  createdBy   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  nsc        NSC             @relation(fields: [nscId], references: [id], onDelete: Cascade)
+  members    ChannelMember[]
+  messages   Message[]
+
+  @@map("channels")
+}
+
+// Channel membership
+model ChannelMember {
+  id        String   @id @default(uuid())
+  channelId String
+  userId    String
+  joinedAt  DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  // Relations
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, userId])
+  @@map("channel_members")
+}
+
+// Message model for all types of conversations
+model Message {
+  id        String      @id @default(uuid())
+  content   String
+  channelId String
+  senderId  String
+  type      MessageType @default(TEXT)
+  metadata  Json?       // For file attachments, etc.
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// Invitation system for external users
+model Invitation {
+  id        String           @id @default(uuid())
+  email     String
+  nscId     String
+  roleId    String?
+  invitedBy String
+  token     String           @unique
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  nsc       NSC  @relation(fields: [nscId], references: [id], onDelete: Cascade)
+  inviter   User @relation(fields: [invitedBy], references: [id])
+
+  @@map("invitations")
+}
+
+// Enums
+enum ChannelType {
+  PUBLIC          // Open channels anyone in NSC can join
+  PRIVATE         // Invite-only channels
+  DIRECT_MESSAGE  // 1:1 conversations between two users
+  GROUP           // Small group chats
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  SYSTEM
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
