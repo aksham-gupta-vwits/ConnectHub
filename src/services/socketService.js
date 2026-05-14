@@ -383,7 +383,7 @@ class SocketService {
         data: {
           content,
           type,
-          metadata: "Nothing",
+          metadata: metadata || null,
           channelId,
           senderId: socket.userId
         },

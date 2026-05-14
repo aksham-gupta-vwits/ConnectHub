@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const helmet = require('helmet');
 require('dotenv').config();
 
 const { errorHandler } = require('./middleware/errorHandler');
@@ -24,9 +25,10 @@ const PORT = process.env.PORT || 3000;
 // Initialize Socket.IO
 socketService.initialize(server);
 
-// Security middleware
+// Security middleware - helmet first, then custom overrides
+app.use(helmet());
 app.use(securityMiddleware);
-// app.use(rateLimiter);
+app.use(rateLimiter);
 
 // CORS configuration
 app.use(cors({

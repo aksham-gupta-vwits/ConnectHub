@@ -48,6 +48,71 @@ router.get('/:nscId', requireNSCAccess, async (req, res, next) => {
   }
 });
 
+// Get available permissions - must be defined BEFORE /:nscId/:roleId to avoid route conflict
+router.get('/:nscId/permissions', requireNSCAccess, async (req, res, next) => {
+  try {
+    const permissions = [
+      {
+        id: 'admin',
+        name: 'Administrator',
+        description: 'Full administrative access to all features'
+      },
+      {
+        id: 'manage_users',
+        name: 'Manage Users',
+        description: 'Add, remove, and modify user accounts and roles'
+      },
+      {
+        id: 'manage_channels',
+        name: 'Manage Channels',
+        description: 'Create, modify, and delete channels'
+      },
+      {
+        id: 'manage_roles',
+        name: 'Manage Roles',
+        description: 'Create, modify, and delete user roles'
+      },
+      {
+        id: 'read_channels',
+        name: 'Read Channels',
+        description: 'View and read messages in channels'
+      },
+      {
+        id: 'send_messages',
+        name: 'Send Messages',
+        description: 'Send messages in channels'
+      },
+      {
+        id: 'join_public_channels',
+        name: 'Join Public Channels',
+        description: 'Join public channels without invitation'
+      },
+      {
+        id: 'create_channels',
+        name: 'Create Channels',
+        description: 'Create new channels'
+      },
+      {
+        id: 'delete_messages',
+        name: 'Delete Messages',
+        description: 'Delete messages from other users'
+      },
+      {
+        id: 'invite_users',
+        name: 'Invite Users',
+        description: 'Send invitations to external users'
+      }
+    ];
+
+    res.json({
+      permissions
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get specific role details
 router.get('/:nscId/:roleId', [
   requireNSCAccess,
@@ -353,71 +418,6 @@ router.delete('/:nscId/:roleId', [
 
     res.json({
       message: 'Role deleted successfully'
-    });
-
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get available permissions
-router.get('/:nscId/permissions', requireNSCAccess, async (req, res, next) => {
-  try {
-    const permissions = [
-      {
-        id: 'admin',
-        name: 'Administrator',
-        description: 'Full administrative access to all features'
-      },
-      {
-        id: 'manage_users',
-        name: 'Manage Users',
-        description: 'Add, remove, and modify user accounts and roles'
-      },
-      {
-        id: 'manage_channels',
-        name: 'Manage Channels',
-        description: 'Create, modify, and delete channels'
-      },
-      {
-        id: 'manage_roles',
-        name: 'Manage Roles',
-        description: 'Create, modify, and delete user roles'
-      },
-      {
-        id: 'read_channels',
-        name: 'Read Channels',
-        description: 'View and read messages in channels'
-      },
-      {
-        id: 'send_messages',
-        name: 'Send Messages',
-        description: 'Send messages in channels'
-      },
-      {
-        id: 'join_public_channels',
-        name: 'Join Public Channels',
-        description: 'Join public channels without invitation'
-      },
-      {
-        id: 'create_channels',
-        name: 'Create Channels',
-        description: 'Create new channels'
-      },
-      {
-        id: 'delete_messages',
-        name: 'Delete Messages',
-        description: 'Delete messages from other users'
-      },
-      {
-        id: 'invite_users',
-        name: 'Invite Users',
-        description: 'Send invitations to external users'
-      }
-    ];
-
-    res.json({
-      permissions
     });
 
   } catch (error) {
