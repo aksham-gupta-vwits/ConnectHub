@@ -11,7 +11,7 @@ const { authenticateToken, requireNSCAccess, requireRole } = require('../middlew
 const router = express.Router();
 
 // Apply rate limiting to all auth routes
-// router.use(authRateLimiter);
+router.use(authRateLimiter);
 
 // Validation middleware
 const validateRegister = [
@@ -19,7 +19,10 @@ const validateRegister = [
   body('username').isLength({ min: 3, max: 30 }),
   body('firstName').isLength({ min: 1, max: 50 }).trim(),
   body('lastName').isLength({ min: 1, max: 50 }).trim(),
-  body('password').isLength({ min: 8 }).matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/),
+  body('password')
+    .isLength({ min: 8, max: 128 })
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/)
+    .withMessage('Password must be 8–128 characters and include uppercase, lowercase, number, and special character (@$!%*?&)'),
   body('nscId').isUUID()
 ];
 

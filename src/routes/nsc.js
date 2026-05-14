@@ -136,7 +136,7 @@ router.get('/:nscId', requireNSCAccess, async (req, res, next) => {
   }
 });
 
-// Create new NSC (super admin only - this would typically be restricted)
+// Create new NSC (authenticated users only)
 router.post('/', [
   body('name').isLength({ min: 2, max: 100 }).trim(),
   body('region').optional().isLength({ min: 2, max: 50 }),

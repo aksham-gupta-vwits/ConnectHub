@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { body, query, validationResult } = require('express-validator');
 
 const { prisma } = require('../config/database');
@@ -403,6 +404,68 @@ router.put('/:userId/deactivate/:nscId', [
 
     res.json({
       message: 'User deactivated successfully in this NSC'
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Change password (authenticated user only)
+router.put('/password', [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 8, max: 128 })
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/)
+    .withMessage('New password must be 8–128 characters and include uppercase, lowercase, number, and special character (@$!%*?&)')
+], async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    // Only form-based auth users can change password
+    if (req.user.authProvider !== 'form') {
+      return res.status(400).json({
+        error: 'Not supported',
+        message: 'Password change is only available for form-based authentication accounts'
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, passwordHash: true }
+    });
+
+    if (!user || !user.passwordHash) {
+      return res.status(400).json({
+        error: 'Invalid account',
+        message: 'Cannot change password for this account'
+      });
+    }
+
+    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        error: 'Authentication failed',
+        message: 'Current password is incorrect'
+      });
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { passwordHash: newPasswordHash }
+    });
+
+    res.json({
+      message: 'Password changed successfully'
     });
 
   } catch (error) {
