@@ -11,6 +11,37 @@ $repoRoot  = (git rev-parse --show-toplevel).Trim()
 $hooksDir  = Join-Path $gitDir 'hooks'
 $scriptsDir = Join-Path $repoRoot 'scripts\hooks'
 
+# Resolve node.exe — checks PATH first, then NVS, then common locations
+function Find-NodeExe {
+    # 1. Already in PATH?
+    $inPath = Get-Command node -ErrorAction SilentlyContinue
+    if ($inPath) { return $inPath.Source }
+
+    # 2. NVS (Node Version Switcher)
+    $nvsRoot = "$env:USERPROFILE\.nvs"
+    if (Test-Path $nvsRoot) {
+        # Prefer the highest-versioned node
+        $found = Get-ChildItem "$nvsRoot" -Filter "node.exe" -Recurse -ErrorAction SilentlyContinue |
+                 Where-Object { $_.FullName -notmatch 'cache' } |
+                 Sort-Object FullName -Descending |
+                 Select-Object -First 1
+        if ($found) { return $found.FullName }
+    }
+
+    # 3. Common install locations
+    $candidates = @(
+        "$env:ProgramFiles\nodejs\node.exe",
+        "$env:LOCALAPPDATA\Programs\nodejs\node.exe",
+        "C:\Program Files\nodejs\node.exe"
+    )
+    foreach ($c in $candidates) { if (Test-Path $c) { return $c } }
+
+    throw "node.exe not found. Install Node.js and try again."
+}
+
+$nodePath = Find-NodeExe
+Write-Host "Using Node.js: $nodePath"
+
 function Install-Hook {
     param([string]$HookName)
 
@@ -36,10 +67,12 @@ function Install-Hook {
 
     # Write a wrapper that calls node on the .js hook (works without bash on Windows)
     if ($src -like "*.js") {
-        $jsPath = $src -replace '\\', '/'
+        $jsPath      = $src -replace '\\', '/'
+        $nodePathFwd = $nodePath -replace '\\', '/'
         # MUST use LF line endings — git's sh.exe rejects CRLF hooks on Windows
+        # Embed the absolute node path so git's minimal sh.exe PATH doesn't matter
         $lf = "`n"
-        $wrapperContent = "#!/usr/bin/env sh${lf}exec node `"$jsPath`" `"`$@`"${lf}"
+        $wrapperContent = "#!/usr/bin/env sh${lf}exec `"$nodePathFwd`" `"$jsPath`" `"`$@`"${lf}"
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
         [System.IO.File]::WriteAllText($dest, $wrapperContent, $utf8NoBom)
     } else {
