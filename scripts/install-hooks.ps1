@@ -36,11 +36,12 @@ function Install-Hook {
 
     # Write a wrapper that calls node on the .js hook (works without bash on Windows)
     if ($src -like "*.js") {
-        $nodePath = (Get-Command node -ErrorAction SilentlyContinue)?.Source ?? 'node'
-        $jsPath   = $src -replace '\\', '/'
-        # Git hooks on Windows can be shell scripts OR executables; write a thin sh wrapper
-        $wrapperContent = "#!/usr/bin/env sh`nexec node `"$jsPath`" `"`$@`""
-        [System.IO.File]::WriteAllText($dest, $wrapperContent)
+        $jsPath = $src -replace '\\', '/'
+        # MUST use LF line endings — git's sh.exe rejects CRLF hooks on Windows
+        $lf = "`n"
+        $wrapperContent = "#!/usr/bin/env sh${lf}exec node `"$jsPath`" `"`$@`"${lf}"
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($dest, $wrapperContent, $utf8NoBom)
     } else {
         Copy-Item $src $dest -Force
     }
