@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "node scripts/check-push-review.js",
+        "windows": "node scripts\\check-push-review.js",
+        "timeout": 30
+      }
+    ]
+  }
+}

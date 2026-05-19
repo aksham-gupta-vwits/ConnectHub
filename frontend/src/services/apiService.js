@@ -275,11 +275,114 @@ class APIService {
   // Public API methods (no auth required)
   async getAvailableNSCs() {
     const response = await fetch(`${API_BASE_URL}/nsc/available`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch available NSCs: ${response.statusText}`);
     }
-    
+
+    return response.json();
+  }
+
+  // Admin API methods
+  async getNSCStats(nscId) {
+    const response = await fetch(`${API_BASE_URL}/nsc/${nscId}/stats`, {
+      headers: this.getAuthHeader()
+    });
+    if (!response.ok) throw new Error(`Failed to fetch NSC stats: ${response.statusText}`);
+    return response.json();
+  }
+
+  async getAllUsers(nscId, query = '', options = {}) {
+    let url = `${API_BASE_URL}/users/search/${nscId}`;
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (options.limit) params.append('limit', options.limit);
+    if (options.offset) params.append('offset', options.offset);
+    if (params.toString()) url += `?${params.toString()}`;
+    const response = await fetch(url, { headers: this.getAuthHeader() });
+    if (!response.ok) throw new Error(`Failed to fetch users: ${response.statusText}`);
+    return response.json();
+  }
+
+  async getUserDetails(userId, nscId) {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/details/${nscId}`, {
+      headers: this.getAuthHeader()
+    });
+    if (!response.ok) throw new Error(`Failed to fetch user details: ${response.statusText}`);
+    return response.json();
+  }
+
+  async updateUserRole(userId, nscId, roleId) {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/role/${nscId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify({ roleId })
+    });
+    if (!response.ok) throw new Error(`Failed to update user role: ${response.statusText}`);
+    return response.json();
+  }
+
+  async deactivateUser(userId, nscId) {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/deactivate/${nscId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeader()
+    });
+    if (!response.ok) throw new Error(`Failed to deactivate user: ${response.statusText}`);
+    return response.json();
+  }
+
+  async getRoles(nscId) {
+    const response = await fetch(`${API_BASE_URL}/roles/${nscId}`, {
+      headers: this.getAuthHeader()
+    });
+    if (!response.ok) throw new Error(`Failed to fetch roles: ${response.statusText}`);
+    return response.json();
+  }
+
+  async createRole(nscId, roleData) {
+    const response = await fetch(`${API_BASE_URL}/roles/${nscId}`, {
+      method: 'POST',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify(roleData)
+    });
+    if (!response.ok) throw new Error(`Failed to create role: ${response.statusText}`);
+    return response.json();
+  }
+
+  async updateRole(nscId, roleId, roleData) {
+    const response = await fetch(`${API_BASE_URL}/roles/${nscId}/${roleId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify(roleData)
+    });
+    if (!response.ok) throw new Error(`Failed to update role: ${response.statusText}`);
+    return response.json();
+  }
+
+  async deleteRole(nscId, roleId) {
+    const response = await fetch(`${API_BASE_URL}/roles/${nscId}/${roleId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeader()
+    });
+    if (!response.ok) throw new Error(`Failed to delete role: ${response.statusText}`);
+    return response.json();
+  }
+
+  async getPendingApprovals(nscId) {
+    const response = await fetch(`${API_BASE_URL}/auth/pending-approvals/${nscId}`, {
+      headers: this.getAuthHeader()
+    });
+    if (!response.ok) throw new Error(`Failed to fetch pending approvals: ${response.statusText}`);
+    return response.json();
+  }
+
+  async approveUser(nscId, userId, action, reason = '') {
+    const response = await fetch(`${API_BASE_URL}/auth/approve-user/${nscId}/${userId}`, {
+      method: 'POST',
+      headers: this.getAuthHeader(),
+      body: JSON.stringify({ action, reason })
+    });
+    if (!response.ok) throw new Error(`Failed to ${action} user: ${response.statusText}`);
     return response.json();
   }
 }

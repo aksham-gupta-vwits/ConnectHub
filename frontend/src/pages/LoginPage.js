@@ -1,83 +1,423 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  GroupuiCard, 
-  GroupuiButton, 
-  GroupuiInput, 
-  GroupuiHeadline, 
-  GroupuiText, 
-  GroupuiBrandLogo,
-  GroupuiDivider,
-  GroupuiGrid,
-  GroupuiGridRow,
-  GroupuiGridCol,
-  GroupuiCheckbox,
-  GroupuiSelect,
-  GroupuiSelectOption,
-  GroupuiLoadingSpinner
-} from '@group-ui/group-ui-react';
+import { useHistory } from 'react-router-dom';
+import styled, { keyframes } from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import CustomNotification from '../components/CustomNotification';
-import apiService from '../services/apiService';
+
+// ── Keyframe Animations ───────────────────────────────────────────────────────
+const fadeInUp = keyframes`
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to   { opacity: 1; }
+`;
+
+const pulse = keyframes`
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 201, 177, 0.5); }
+  50%       { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(0, 201, 177, 0); }
+`;
+
+const floatOrb = keyframes`
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(40px, -60px) scale(1.1); }
+  66%       { transform: translate(-30px, 25px) scale(0.92); }
+`;
+
+const rotateRing = keyframes`
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+`;
+
+const slideInLeft = keyframes`
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+`;
+
+const shimmer = keyframes`
+  0%   { left: -60%; }
+  100% { left: 130%; }
+`;
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+`;
+
+const dotBounce = keyframes`
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+`;
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+const PageWrapper = styled.div`
+  min-height: 100vh;
+  background: linear-gradient(135deg, #080d14 0%, #001510 55%, #001a17 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+`;
+
+const Orb = styled.div`
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  animation: ${floatOrb} ${props => props.duration || '10s'} ease-in-out infinite;
+  animation-delay: ${props => props.delay || '0s'};
+  opacity: 0.25;
+`;
+
+const GlassCard = styled.div`
+  width: 100%;
+  max-width: 1020px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  overflow: hidden;
+  display: flex;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: ${fadeIn} 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  z-index: 10;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    max-width: 480px;
+  }
+`;
+
+// ── Left Panel ────────────────────────────────────────────────────────────────
+const LeftPanel = styled.div`
+  flex: 7;
+  background: linear-gradient(145deg, rgba(0, 128, 117, 0.75) 0%, rgba(0, 55, 50, 0.9) 100%);
+  padding: 64px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 620px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const Ring = styled.div`
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  animation: ${rotateRing} ${props => props.duration || '24s'} linear infinite;
+  animation-direction: ${props => props.reverse ? 'reverse' : 'normal'};
+`;
+
+const LogoWrapper = styled.div`
+  width: 88px;
+  height: 88px;
+  background: white;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+  animation: ${pulse} 3.5s ease-in-out infinite;
+  flex-shrink: 0;
+`;
+
+const LogoText = styled.span`
+  font-size: 34px;
+  font-weight: 900;
+  color: #008075;
+  letter-spacing: -2px;
+`;
+
+const HeroTitle = styled.h1`
+  font-size: 44px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 18px 0;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  animation: ${slideInLeft} 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+`;
+
+const HeroSubtitle = styled.p`
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.75;
+  margin: 0 0 44px 0;
+  max-width: 340px;
+  animation: ${slideInLeft} 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+`;
+
+const FeatureList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: ${slideInLeft} 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both;
+`;
+
+const FeatureItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+`;
+
+const FeatureIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+`;
+
+// ── Right Panel ───────────────────────────────────────────────────────────────
+const RightPanel = styled.div`
+  flex: 5;
+  padding: 52px 44px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.1);
+`;
+
+const RightHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  animation: ${fadeInUp} 0.6s ease-out 0.2s both;
+`;
+
+const FormTitle = styled.h2`
+  font-size: 26px;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+`;
+
+const SignUpLink = styled.button`
+  background: rgba(0, 201, 177, 0.1);
+  border: 1px solid rgba(0, 201, 177, 0.3);
+  border-radius: 8px;
+  color: #00c9b1;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: rgba(0, 201, 177, 0.2);
+    border-color: rgba(0, 201, 177, 0.6);
+    transform: translateY(-1px);
+  }
+`;
+
+const SSOButton = styled.button`
+  width: 100%;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  animation: ${fadeInUp} 0.6s ease-out 0.35s both;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  }
+`;
+
+const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0;
+  animation: ${fadeInUp} 0.6s ease-out 0.45s both;
+
+  &::before, &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  span {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+`;
+
+const InputGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+  animation: ${fadeInUp} 0.6s ease-out ${props => props.delay || '0.5s'} both;
+`;
+
+const Label = styled.label`
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+`;
+
+const StyledInput = styled.input`
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: white;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+  }
+
+  &:focus {
+    border-color: rgba(0, 201, 177, 0.6);
+    background: rgba(0, 201, 177, 0.06);
+    box-shadow: 0 0 0 3px rgba(0, 201, 177, 0.12);
+  }
+
+  &:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #0a1f1d inset;
+    -webkit-text-fill-color: white;
+  }
+`;
+
+const SubmitButton = styled.button`
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #008075 0%, #00c9b1 100%);
+  border: none;
+  border-radius: 14px;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  animation: ${fadeInUp} 0.6s ease-out 0.75s both;
+  letter-spacing: 0.3px;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 128, 117, 0.55);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    width: 35%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.18);
+    transform: skewX(-20deg);
+    animation: ${shimmer} 2.5s ease-in-out infinite;
+  }
+`;
+
+const SpinnerRing = styled.div`
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: ${spin} 0.75s linear infinite;
+  flex-shrink: 0;
+`;
+
+const FooterText = styled.div`
+  text-align: center;
+  margin-top: auto;
+  padding-top: 28px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.3);
+  animation: ${fadeInUp} 0.6s ease-out 0.9s both;
+  line-height: 1.8;
+
+  a {
+    color: #00c9b1;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 600;
+
+    &:hover { text-decoration: underline; }
+  }
+`;
+
+// ── Component ─────────────────────────────────────────────────────────────────
+const FEATURES = [
+  { icon: '🔒', text: 'End-to-end encrypted messaging' },
+  { icon: '⚡', text: 'Real-time collaboration tools' },
+  { icon: '🛡️', text: 'Role-based access control' },
+  { icon: '🌏', text: 'NSC-wide channel management' },
+];
 
 const LoginPage = () => {
   const { login } = useAuth();
+  const history = useHistory();
   const isMountedRef = useRef(true);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [availableNSCs, setAvailableNSCs] = useState([]);
-  const [loadingNSCs, setLoadingNSCs] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    username: '',
-    nscId: '',
-    confirmPassword: '',
-    agreeToTerms: false
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
 
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
+    return () => { isMountedRef.current = false; };
   }, []);
 
-  // Fetch available NSCs when switching to signup
-  useEffect(() => {
-    const fetchNSCs = async () => {
-      if (!isSignUp) return;
-      
-      setLoadingNSCs(true);
-      try {
-        const response = await apiService.getAvailableNSCs();
-        if (isMountedRef.current) {
-          setAvailableNSCs(response.nscs || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch NSCs:', error);
-        if (isMountedRef.current) {
-          setError('Failed to load available NSCs. Please try again.');
-        }
-      } finally {
-        if (isMountedRef.current) {
-          setLoadingNSCs(false);
-        }
-      }
-    };
-
-    fetchNSCs();
-  }, [isSignUp]);
-
   const handleInputChange = (e) => {
-    const { name, value, checked, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    // Clear error when user starts typing
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError('');
     if (successMessage) setSuccessMessage('');
   };
@@ -85,450 +425,146 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isMountedRef.current) return;
-    
     setIsLoading(true);
     setError('');
-
-    if (isSignUp) {
-      // Handle sign up
-      if (formData.password !== formData.confirmPassword) {
-        if (isMountedRef.current) {
-          setError('Passwords do not match');
-          setIsLoading(false);
-        }
-        return;
-      }
-      if (!formData.agreeToTerms) {
-        if (isMountedRef.current) {
-          setError('Please agree to the Terms and Privacy Policy');
-          setIsLoading(false);
-        }
-        return;
-      }
-      
-      if (!formData.nscId) {
-        if (isMountedRef.current) {
-          setError('Please select your NSC (National Service Center)');
-          setIsLoading(false);
-        }
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            username: formData.username,
-            nscId: formData.nscId
-          })
-        });
-
-        if (!isMountedRef.current) return;
-
-        if (response.ok) {
-          const result = await response.json();
-          setError('');
-          if (result.needsApproval) {
-            setSuccessMessage('Registration submitted successfully! Your account is pending admin approval. You will receive access once approved.');
-          } else {
-            setSuccessMessage('Account created successfully! Please sign in with your new credentials.');
-          }
-          setIsSignUp(false);
-          setFormData({
-            ...formData,
-            firstName: '',
-            lastName: '',
-            confirmPassword: '',
-            agreeToTerms: false
-          });
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Registration failed');
-        }
-      } catch (error) {
-        if (isMountedRef.current) {
-          setError('Registration failed. Please try again.');
-        }
-      }
-    } else {
-      // Handle sign in
-      const result = await login({
-        email: formData.email,
-        password: formData.password
-      });
-      
-      if (!isMountedRef.current) return;
-      
-      if (!result.success) {
-        setError(result.error || 'Login failed. Please try again.');
-      }
-    }
-    
-    if (isMountedRef.current) {
-      setIsLoading(false);
-    }
+    const result = await login({ email: formData.email, password: formData.password });
+    if (!isMountedRef.current) return;
+    if (!result.success) setError(result.error || 'Login failed. Please try again.');
+    if (isMountedRef.current) setIsLoading(false);
   };
 
   const handleSSOLogin = () => {
-    // Redirect to Windows SSO endpoint
     window.location.href = '/api/auth/sso';
   };
 
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp);
-    setError('');
-    setSuccessMessage('');
-    setFormData({
-      email: '',
-      password: '',
-      firstName: '',
-      lastName: '',
-      confirmPassword: '',
-      agreeToTerms: false
-    });
-  };
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f8f9fa',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{ width: '100%', maxWidth: '1000px' }}>
-        <GroupuiCard elevation="4" padding="0">
-          <GroupuiGrid gutter="0px">
-            <GroupuiGridRow>
-              {/* Left Banner - Hidden on mobile */}
-              <GroupuiGridCol l="7" m="7" s="0">
-                <div style={{
-                  backgroundColor: '#008075',
-                  color: 'white',
-                  padding: '60px 40px',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  minHeight: '600px'
-                }}>
-                  <div style={{ maxWidth: '400px' }}>
-                    {/* Logo placeholder */}
-                    {/* <GroupuiBrandLogo></GroupuiBrandLogo> */}
-                    <div style={{
-                      width: '80px',
-                      height: '80px',
-                      backgroundColor: 'white',
-                      borderRadius: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '24px'
-                    }}>
-                      <span style={{
-                        fontSize: '32px',
-                        fontWeight: 'bold',
-                        color: '#008075'
-                      }}>
-                        CH
-                      </span>
-                    </div>
-                    
-                    <GroupuiHeadline heading="h1" weight="normal" style={{ 
-                      color: 'white',
-                      marginBottom: '16px'
-                    }}>
-                      ConnectHub
-                    </GroupuiHeadline>
-                    
-                    <GroupuiText style={{ 
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '16px',
-                      lineHeight: '1.5'
-                    }}>
-                      A secure internal communication platform designed for NSCs (National Service Centers) 
-                      across the APAC region. Connect, collaborate, and communicate with your team members 
-                      in a professional and secure environment.
-                    </GroupuiText>
+    <PageWrapper>
+      {/* Ambient orbs */}
+      <Orb style={{ width: 500, height: 500, background: '#008075', top: '-160px', left: '-160px' }} duration="13s" />
+      <Orb style={{ width: 350, height: 350, background: '#00c9b1', bottom: '-80px', right: '-80px' }} duration="10s" delay="2s" />
+      <Orb style={{ width: 220, height: 220, background: '#004d45', top: '45%', left: '35%' }} duration="16s" delay="1.5s" />
+      <Orb style={{ width: 150, height: 150, background: '#006b62', top: '20%', right: '20%' }} duration="9s" delay="4s" />
+
+      <GlassCard>
+        {/* ── LEFT PANEL ── */}
+        <LeftPanel>
+          <Ring style={{ width: 340, height: 340, top: '-140px', right: '-140px' }} duration="28s" />
+          <Ring style={{ width: 220, height: 220, bottom: '-90px', left: '-90px' }} duration="22s" reverse />
+          <Ring style={{ width: 160, height: 160, bottom: '28%', right: '-60px' }} duration="35s" />
+
+          <LogoWrapper>
+            <LogoText>CH</LogoText>
+          </LogoWrapper>
+
+          <HeroTitle>
+            Connect.<br />
+            Collaborate.<br />
+            Communicate.
+          </HeroTitle>
+
+          <HeroSubtitle>
+            A secure internal platform for NSCs across the APAC region.
+            Built for teams that need to move fast and stay in sync.
+          </HeroSubtitle>
+
+          <FeatureList>
+            {FEATURES.map(({ icon, text }) => (
+              <FeatureItem key={text}>
+                <FeatureIcon>{icon}</FeatureIcon>
+                {text}
+              </FeatureItem>
+            ))}
+          </FeatureList>
+        </LeftPanel>
+
+        {/* ── RIGHT PANEL ── */}
+        <RightPanel>
+          <RightHeader>
+            <FormTitle>Welcome back</FormTitle>
+            <SignUpLink onClick={() => history.push('/register')}>
+              Sign up
+            </SignUpLink>
+          </RightHeader>
+
+          <SSOButton onClick={handleSSOLogin} type="button">
+            <svg width="18" height="18" viewBox="0 0 21 21" fill="none">
+              <rect x="0"  y="0"  width="10" height="10" fill="#f25022" />
+              <rect x="11" y="0"  width="10" height="10" fill="#7fba00" />
+              <rect x="0"  y="11" width="10" height="10" fill="#00a4ef" />
+              <rect x="11" y="11" width="10" height="10" fill="#ffb900" />
+            </svg>
+            Continue with Windows SSO
+          </SSOButton>
+
+          <Divider><span>or sign in with email</span></Divider>
+
+          {error && (
+            <CustomNotification
+              message={error}
+              severity="error"
+              onClose={() => setError('')}
+              autoHideDuration={6000}
+              style={{ position: 'relative', top: 'auto', right: 'auto', marginBottom: '16px', maxWidth: '100%' }}
+            />
+          )}
+          {successMessage && (
+            <CustomNotification
+              message={successMessage}
+              severity="success"
+              onClose={() => setSuccessMessage('')}
+              autoHideDuration={5000}
+              style={{ position: 'relative', top: 'auto', right: 'auto', marginBottom: '16px', maxWidth: '100%' }}
+            />
+          )}
+
+          <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <InputGroup delay="0.5s">
+              <Label htmlFor="email">Email</Label>
+              <StyledInput
+                id="email"
+                type="email"
+                name="email"
+                placeholder="you@company.com"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                autoComplete="email"
+              />
+            </InputGroup>
+
+            <InputGroup delay="0.62s">
+              <Label htmlFor="password">Password</Label>
+              <StyledInput
+                id="password"
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+                autoComplete="current-password"
+              />
+            </InputGroup>
+
+            <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+              <SubmitButton type="submit" disabled={isLoading}>
+                {isLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                    <SpinnerRing />
+                    Signing in...
                   </div>
-                </div>
-              </GroupuiGridCol>
+                ) : 'Sign in'}
+              </SubmitButton>
+            </div>
+          </form>
 
-              {/* Right Form */}
-              <GroupuiGridCol l="5" m="5" s="12">
-                <div style={{
-                  padding: '40px',
-                  height: '100%',
-                  minHeight: '600px',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}>
-                  {/* Header */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '24px'
-                  }}>
-                    <GroupuiHeadline heading="h3" weight="normal">
-                      {isSignUp ? 'Sign up' : 'Sign in'}
-                    </GroupuiHeadline>
-                    <GroupuiButton 
-                      alignment="right" 
-                      size="m" 
-                      variant="tertiary"
-                      onClick={toggleMode}
-                    >
-                      {isSignUp ? 'Log in' : 'Sign up'}
-                    </GroupuiButton>
-                  </div>
-
-                  <GroupuiDivider style={{ margin: '0 0 24px 0' }} />
-
-                  {/* SSO Login Button */}
-                  {!isSignUp && (
-                    <>
-                      <GroupuiButton
-                        fullWidth="true"
-                        size="l"
-                        variant="secondary"
-                        onClick={handleSSOLogin}
-                        style={{ marginBottom: '24px' }}
-                      >
-                        Continue with Windows SSO
-                      </GroupuiButton>
-
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        margin: '20px 0',
-                        color: '#6c757d'
-                      }}>
-                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e0e0e0' }}></div>
-                        <GroupuiText style={{ margin: '0 16px', fontSize: '14px' }}>
-                          OR
-                        </GroupuiText>
-                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e0e0e0' }}></div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Error Message */}
-                  {error && (
-                    <CustomNotification 
-                      message={error}
-                      severity="error"
-                      onClose={() => setError('')}
-                      autoHideDuration={6000}
-                      style={{ 
-                        position: 'relative',
-                        top: 'auto',
-                        right: 'auto',
-                        marginBottom: '20px',
-                        maxWidth: '100%'
-                      }}
-                    />
-                  )}
-
-                  {/* Success Message */}
-                  {successMessage && (
-                    <CustomNotification 
-                      message={successMessage}
-                      severity="success"
-                      onClose={() => setSuccessMessage('')}
-                      autoHideDuration={5000}
-                      style={{ 
-                        position: 'relative',
-                        top: 'auto',
-                        right: 'auto',
-                        marginBottom: '20px',
-                        maxWidth: '100%'
-                      }}
-                    />
-                  )}
-
-                  {/* Form */}
-                  <form onSubmit={handleSubmit} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
-                      
-                      {/* Name fields for sign up */}
-                      {isSignUp && (
-                        <>
-                          <div style={{ display: 'flex', gap: '12px' }}>
-                            <div style={{ flex: 1 }}>
-                              <GroupuiInput
-                                placeholder="First name"
-                                name="firstName"
-                                value={formData.firstName}
-                                onGroupuiChange={handleInputChange}
-                                required
-                                type="text"
-                              >
-                                <span slot="label">First Name</span>
-                              </GroupuiInput>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <GroupuiInput
-                                placeholder="Last name"
-                                name="lastName"
-                                value={formData.lastName}
-                                onGroupuiChange={handleInputChange}
-                                required
-                                type="text"
-                              >
-                                <span slot="label">Last Name</span>
-                              </GroupuiInput>
-                            </div>
-                          </div>
-                          <GroupuiInput
-                                placeholder="UserName"
-                                name="username"
-                                value={formData.username}
-                                onGroupuiChange={handleInputChange}
-                                required
-                                type="text"
-                              >
-                                <span slot="label">User Name</span>
-                              </GroupuiInput>
-
-                          {/* NSC Selection */}
-                          <div>
-                            <GroupuiText style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px' }}>
-                              NSC (National Service Center) *
-                            </GroupuiText>
-                            {loadingNSCs ? (
-                              <div style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px', 
-                                padding: '12px',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px'
-                              }}>
-                                <GroupuiLoadingSpinner size="s" />
-                                <GroupuiText style={{ color: '#6c757d' }}>Loading NSCs...</GroupuiText>
-                              </div>
-                            ) : (
-                              <GroupuiSelect
-                                value={formData.nscId}
-                                onGroupuiChange={(e) => handleInputChange({
-                                  target: { name: 'nscId', value: e.target.value }
-                                })}
-                                placeholder="Select your NSC"
-                                required
-                              >
-                                <GroupuiSelectOption value="">Select your NSC</GroupuiSelectOption>
-                                {availableNSCs.map(nsc => (
-                                  <GroupuiSelectOption key={nsc.id} value={nsc.id}>
-                                    {nsc.name} ({nsc.region})
-                                  </GroupuiSelectOption>
-                                ))}
-                              </GroupuiSelect>
-                            )}
-                            <GroupuiText style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
-                              Select the National Service Center you belong to
-                            </GroupuiText>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Email */}
-                      <GroupuiInput
-                        placeholder="Enter your email"
-                        name="email"
-                        value={formData.email}
-                        onGroupuiChange={handleInputChange}
-                        required
-                        type="email"
-                      >
-                        <span slot="label">Email</span>
-                      </GroupuiInput>
-
-                      {/* Password */}
-                      <GroupuiInput
-                        placeholder="Enter your password"
-                        name="password"
-                        value={formData.password}
-                        onGroupuiChange={handleInputChange}
-                        required
-                        type="password"
-                      >
-                        <span slot="label">Password</span>
-                      </GroupuiInput>
-
-                      {/* Confirm Password for sign up */}
-                      {isSignUp && (
-                        <GroupuiInput
-                          placeholder="Confirm your password"
-                          name="confirmPassword"
-                          value={formData.confirmPassword}
-                          onGroupuiChange={handleInputChange}
-                          required
-                          type="password"
-                        >
-                          <span slot="label">Confirm Password</span>
-                        </GroupuiInput>
-                      )}
-
-                      {/* Terms checkbox for sign up */}
-                      {isSignUp && (
-                        <GroupuiCheckbox
-                          name="agreeToTerms"
-                          checked={formData.agreeToTerms}
-                          onGroupuiChange={handleInputChange}
-                        >
-                          I agree to the Terms and Privacy Policy
-                        </GroupuiCheckbox>
-                      )}
-                    </div>
-
-                    {/* Submit Button */}
-                    <GroupuiButton
-                      type="submit"
-                      variant="primary"
-                      // disabled={isLoading || !formData.email || !formData.password || (isSignUp && (!formData.firstName || !formData.lastName || !formData.confirmPassword || !formData.agreeToTerms))}
-                      // style={{
-                      //   backgroundColor: '#4a154b',
-                      //   marginTop: 'auto'
-                      // }}
-                    >
-                      {isLoading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <GroupuiLoadingSpinner size="s" />
-                          {isSignUp ? 'Creating account...' : 'Signing in...'}
-                        </div>
-                      ) : (
-                        isSignUp ? 'Sign up' : 'Sign in'
-                      )}
-                    </GroupuiButton>
-                  </form>
-
-                  {/* Footer */}
-                  <div style={{
-                    textAlign: 'center',
-                    marginTop: '24px',
-                    paddingTop: '20px',
-                    borderTop: '1px solid #e0e0e0'
-                  }}>
-                    <GroupuiText style={{ color: '#6c757d', fontSize: '14px' }}>
-                      Need help? Contact your NSC administrator
-                    </GroupuiText>
-                  </div>
-                </div>
-              </GroupuiGridCol>
-            </GroupuiGridRow>
-          </GroupuiGrid>
-        </GroupuiCard>
-      </div>
-    </div>
+          <FooterText>
+            Need help?{' '}
+            <a href="#">Contact your NSC administrator</a>
+          </FooterText>
+        </RightPanel>
+      </GlassCard>
+    </PageWrapper>
   );
 };
 

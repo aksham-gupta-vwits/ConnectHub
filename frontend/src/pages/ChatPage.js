@@ -10,7 +10,6 @@ import MessageInput from '../components/MessageInput';
 import CreateGroupModal from '../components/CreateGroupModal';
 import CreatePublicChannelModal from '../components/CreatePublicChannelModal';
 import UserListModal from '../components/UserListModal';
-import AdminApprovalPage from '../components/AdminApprovalPage';
 import CustomNotification from '../components/CustomNotification';
 
 const ChatPage = () => {
@@ -36,7 +35,6 @@ const ChatPage = () => {
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [showCreatePublicChannelModal, setShowCreatePublicChannelModal] = useState(false);
   const [showUserListModal, setShowUserListModal] = useState(false);
-  const [showAdminApproval, setShowAdminApproval] = useState(false);
   const [selectedUserForDM, setSelectedUserForDM] = useState(null); // Store selected user info
   
   // Refs for cleanup
@@ -499,76 +497,36 @@ const ChatPage = () => {
 
       {/* Main content area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {showAdminApproval ? (
-          /* Admin Approval Page */
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* Header with back button */}
-            <div style={{
-              height: '60px',
-              backgroundColor: '#ffffff',
-              borderBottom: '1px solid #e0e0e0',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 24px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-              <GroupuiButton
-                variant="ghost"
-                size="s"
-                onClick={() => setShowAdminApproval(false)}
-                style={{ marginRight: '16px' }}
-              >
-                ← Back to Chat
-              </GroupuiButton>
-              <GroupuiText weight="bold" style={{ fontSize: '18px' }}>
-                User Approvals
-              </GroupuiText>
-            </div>
-            
-            {/* Admin Approval Content */}
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <AdminApprovalPage />
-            </div>
-          </div>
-        ) : (
-          /* Normal Chat Interface */
-          <>
-            {/* Header */}
-            <ChatHeader
-              selectedNSC={selectedNSC}
-              availableNSCs={availableNSCs}
-              socketConnected={socketConnected}
-              activeTitle={getActiveTitle()}
-              user={user}
-              onNSCChange={selectNSC}
-              onShowAdminApproval={() => {
-                console.log('👥 Opening admin approval page');
-                setShowAdminApproval(true);
-              }}
-            />
+        {/* Header */}
+        <ChatHeader
+          selectedNSC={selectedNSC}
+          availableNSCs={availableNSCs}
+          socketConnected={socketConnected}
+          activeTitle={getActiveTitle()}
+          user={user}
+          onNSCChange={selectNSC}
+        />
 
-            {/* Message area */}
-            <MessageArea
-              activeChannel={activeChannel}
-              messages={messages}
-              loading={loading}
-              typingUsers={typingUsers}
-              getActiveTitle={getActiveTitle}
-              getActiveChannelInfo={getActiveChannelInfo}
-              formatMessageTime={formatMessageTime}
-            />
+        {/* Message area */}
+        <MessageArea
+          activeChannel={activeChannel}
+          messages={messages}
+          loading={loading}
+          typingUsers={typingUsers}
+          getActiveTitle={getActiveTitle}
+          getActiveChannelInfo={getActiveChannelInfo}
+          formatMessageTime={formatMessageTime}
+        />
 
-            {/* Message input */}
-            <MessageInput
-              activeChannel={activeChannel}
-              newMessage={newMessage}
-              onMessageChange={(e) => handleTyping(e.target.value)}
-              onSubmit={sendMessage}
-              getActiveTitle={getActiveTitle}
-              disabled={!socketConnected || !channelJoined}
-            />
-          </>
-        )}
+        {/* Message input */}
+        <MessageInput
+          activeChannel={activeChannel}
+          newMessage={newMessage}
+          onMessageChange={(e) => handleTyping(e.target.value)}
+          onSubmit={sendMessage}
+          getActiveTitle={getActiveTitle}
+          disabled={!socketConnected || !channelJoined}
+        />
       </div>
 
       {/* Modals */}

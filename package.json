@@ -16,7 +16,9 @@
     "db:seed-channels": "node scripts/seed-channels.js",
     "test": "node test-api.js",
     "test:endpoints": "node test-api.js",
-    "test:channels": "node test-channels-api.js"
+    "test:channels": "node test-channels-api.js",
+    "hooks:install": "bash scripts/install-hooks.sh || pwsh scripts/install-hooks.ps1",
+    "hooks:uninstall": "bash scripts/uninstall-hooks.sh"
   },
   "keywords": [
     "communication",

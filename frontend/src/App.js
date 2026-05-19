@@ -7,7 +7,9 @@ import './App.css';
 
 // Components
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import ChatPage from './pages/ChatPage';
+import AdminDashboard from './pages/AdminDashboard';
 import LoadingSpinner from './components/LoadingSpinner';
 
 function AppContent() {
@@ -23,10 +25,12 @@ function AppContent() {
         <Switch>
           <Route exact path="/" component={ChatPage} />
           <Route path="/chat" component={ChatPage} />
+          <Route path="/admin" component={AdminDashboard} />
           <Redirect to="/" />
         </Switch>
       ) : (
         <Switch>
+          <Route path="/register" component={RegisterPage} />
           <Route path="/login" component={LoginPage} />
           <Redirect to="/login" />
         </Switch>

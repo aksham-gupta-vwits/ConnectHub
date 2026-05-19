@@ -1,7 +1,8 @@
 import React from 'react';
-import { 
-  GroupuiText, 
-  GroupuiSelect, 
+import { useHistory } from 'react-router-dom';
+import {
+  GroupuiText,
+  GroupuiSelect,
   GroupuiSelectOption,
   GroupuiButton
 } from '@group-ui/group-ui-react';
@@ -12,9 +13,10 @@ const ChatHeader = ({
   socketConnected,
   activeTitle,
   user,
-  onNSCChange,
-  onShowAdminApproval
+  onNSCChange
 }) => {
+  const history = useHistory();
+
   // Check if user is admin
   const isAdmin = () => {
     if (!user || !user.nscMemberships || !selectedNSC) return false;
@@ -69,7 +71,7 @@ const ChatHeader = ({
           <GroupuiButton
             variant="secondary"
             size="s"
-            onClick={onShowAdminApproval}
+            onClick={() => history.push('/admin')}
           >
             Admin
           </GroupuiButton>

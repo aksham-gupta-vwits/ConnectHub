@@ -1,3 +1,6 @@
 node_modules
 # Keep environment variables out of version control
 .env
+
+# Git hook review artifacts (generated at runtime)
+.git/reviews/

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# pre-push — ConnectHub git hook
+#
+# Triggers a background code review via the Reviewer agent whenever
+# code is pushed. Non-blocking: the push proceeds immediately while
+# the review runs asynchronously.
+#
+# Installed by: npm run hooks:install  OR  bash scripts/install-hooks.sh
+
+set -euo pipefail
+
+REMOTE="$1"
+URL="$2"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+REVIEW_SCRIPT="$REPO_ROOT/scripts/review-diff.js"
+
+# Skip if review script is missing (repo not fully set up yet)
+if [ ! -f "$REVIEW_SCRIPT" ]; then
+  exit 0
+fi
+
+REVIEW_DIR="$(git rev-parse --git-dir)/reviews"
+mkdir -p "$REVIEW_DIR"
+
+# Read pushed refs from stdin (format: <local-ref> <local-sha> <remote-ref> <remote-sha>)
+while IFS=' ' read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+  # Skip branch deletions
+  [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ] && continue
+
+  if [ "$REMOTE_SHA" = "0000000000000000000000000000000000000000" ]; then
+    # New branch — compare against first commit
+    RANGE="${LOCAL_SHA}"
+  else
+    RANGE="${REMOTE_SHA}..${LOCAL_SHA}"
+  fi
+
+  DIFF_STAT=$(git diff --stat "$RANGE" 2>/dev/null || true)
+  [ -z "$DIFF_STAT" ] && continue
+
+  TIMESTAMP=$(date +%Y%m%d_%H%M%S 2>/dev/null || date +%s)
+  DIFF_FILE="$REVIEW_DIR/review_${TIMESTAMP}.diff"
+
+  # Write the diff to a file for the review script
+  {
+    echo "=== ConnectHub Code Review Request ==="
+    echo "Remote : $REMOTE ($URL)"
+    echo "Branch : $LOCAL_REF → $REMOTE_REF"
+    echo "Range  : $RANGE"
+    echo "Date   : $(date)"
+    echo ""
+    echo "--- Changed Files ---"
+    git diff --stat "$RANGE"
+    echo ""
+    echo "--- Full Diff ---"
+    git diff "$RANGE"
+  } > "$DIFF_FILE"
+
+  # Launch the review in the background — does NOT block the push
+  node "$REVIEW_SCRIPT" "$DIFF_FILE" \
+    > "$REVIEW_DIR/review_${TIMESTAMP}.log" 2>&1 &
+
+  echo ""
+  echo "🔍 Code review requested (running in background)"
+  echo "   Diff  : $DIFF_FILE"
+  echo "   Review: ${DIFF_FILE%.diff}_review.md  (ready shortly)"
+  echo "   Tip   : Open in VS Code and ask @Reviewer to review if needed."
+  echo ""
+done
+
+exit 0
