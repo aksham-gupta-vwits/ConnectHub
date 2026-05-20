@@ -8,8 +8,19 @@ $ErrorActionPreference = 'Stop'
 
 $gitDir    = (git rev-parse --git-dir).Trim()
 $repoRoot  = (git rev-parse --show-toplevel).Trim()
-$hooksDir  = Join-Path $gitDir 'hooks'
 $scriptsDir = Join-Path $repoRoot 'scripts\hooks'
+
+# For git worktrees, hooks must go in the MAIN repo's .git/hooks, not the worktree's git dir.
+# The worktree's commondir points to the main .git; resolve it.
+$commondirFile = Join-Path $gitDir 'commondir'
+if (Test-Path $commondirFile) {
+    $commonRelative = (Get-Content $commondirFile -Raw).Trim()
+    $commonDir = [System.IO.Path]::GetFullPath((Join-Path $gitDir $commonRelative))
+} else {
+    $commonDir = $gitDir
+}
+$hooksDir = Join-Path $commonDir 'hooks'
+New-Item -ItemType Directory -Force -Path $hooksDir | Out-Null
 
 # Resolve node.exe — checks PATH first, then NVS, then common locations
 function Find-NodeExe {
