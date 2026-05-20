@@ -80,17 +80,24 @@ process.stdin.on('end', () => {
   // Launch review-diff.js in the background (non-blocking)
   const reviewScript = path.join(repoRoot, 'scripts', 'review-diff.js');
   if (fs.existsSync(reviewScript)) {
-    const child = spawnSync('node', [reviewScript, diffFile], {
+    const { spawn } = require('child_process');
+    const child = spawn(process.execPath, [reviewScript, diffFile], {
       detached: true,
       stdio: 'ignore',
       cwd: repoRoot,
     });
+    child.unref();
   }
 
-  // Inject a message into the agent's context so the user is aware
-  const reviewOutputFile = diffFile.replace(/\.diff$/, '_review.md');
+  // Truncate diff for the system message (keep it readable, not overwhelming)
+  const MAX = 4000;
+  const diffPreview = fullDiff.length > MAX
+    ? fullDiff.slice(0, MAX) + '\n\n... [truncated — full diff at: ' + diffFile + ']'
+    : fullDiff;
+
+  // Inject a systemMessage that instructs the current agent to invoke @Reviewer automatically
   const output = {
-    systemMessage: `\n🔍 **Code review triggered** for the pushed commits.\nDiff saved: \`${diffFile}\`\nReview output (when ready): \`${reviewOutputFile}\`\nYou can also ask **@Reviewer** directly to review the latest diff.`,
+    systemMessage: `git push completed. IMPORTANT: You must now invoke the @Reviewer subagent to review the pushed code. Pass it the following diff and ask for a full code review with critical issues, suggestions, and a verdict:\n\n\`\`\`diff\n${diffPreview}\n\`\`\``,
   };
   process.stdout.write(JSON.stringify(output));
   process.exit(0);
