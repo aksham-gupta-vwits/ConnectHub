@@ -51,6 +51,13 @@ process.stdin.on('end', () => {
 
   if (!repoRoot) process.exit(0);
 
+  // Use git rev-parse --git-dir so the path is correct for both regular repos and worktrees
+  const gitDir = spawnSync('git', ['rev-parse', '--git-dir'], {
+    encoding: 'utf8',
+  }).stdout.trim();
+
+  if (!gitDir) process.exit(0);
+
   const diffResult = spawnSync('git', ['diff', 'HEAD~1..HEAD', '--stat', '--diff-filter=ACMRT'], {
     encoding: 'utf8',
     cwd: repoRoot,
@@ -61,9 +68,9 @@ process.stdin.on('end', () => {
     process.exit(0);
   }
 
-  // Write diff to a temp file for the review script to consume
+  // Write diff to a temp file — use git-dir so path is correct for worktrees too
   const timestamp = Date.now();
-  const reviewsDir = path.join(repoRoot, '.git', 'reviews');
+  const reviewsDir = path.join(gitDir, 'reviews');
   fs.mkdirSync(reviewsDir, { recursive: true });
 
   const diffFile = path.join(reviewsDir, `review_${timestamp}.diff`);
