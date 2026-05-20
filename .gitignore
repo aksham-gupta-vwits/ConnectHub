@@ -2,8 +2,7 @@ node_modules
 # Keep environment variables out of version control
 .env
 
-# Git hook review artifacts (generated at runtime)
-.git/reviews/
+# Git hook review artifacts (generated at runtime, inside .git — not tracked by git)
 
 # Log files
 *.log
