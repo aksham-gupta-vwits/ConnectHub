@@ -4,3 +4,5 @@ node_modules
 
 # Git hook review artifacts (generated at runtime)
 .git/reviews/
+
+debug.log
